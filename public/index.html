@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PREM API Chat</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+    }
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+    }
+    h1 {
+      text-align: center;
+    }
+    .response-box {
+      margin-top: 20px;
+      padding: 10px;
+      border: 1px solid #ccc;
+      min-height: 50px;
+    }
+    .loading {
+      font-style: italic;
+      color: gray;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>PREM API Chat</h1>
+    <form id="chatForm">
+        <textarea id="messageInput" placeholder="Ask something..." style="width: 100%; padding: 10px; margin-bottom: 10px; height: 100px;" required></textarea>
+        <button type="submit" style="padding: 10px 20px;">Send</button>
+      </form>
+      
+    
+    <!-- Two separate response boxes -->
+    <div class="response-box" id="gptResponseBox">
+      GPT-4 Response: Waiting for a response...
+    </div>
+
+    <div class="response-box" id="claudeResponseBox">
+      Claude-3.5 Response: Waiting for a response...
+    </div>
+  </div>
+
+  <script>
+    const chatForm = document.getElementById('chatForm');
+    const messageInput = document.getElementById('messageInput');
+    const gptResponseBox = document.getElementById('gptResponseBox');
+    const claudeResponseBox = document.getElementById('claudeResponseBox');
+
+    chatForm.addEventListener('submit', async function (e) {
+  e.preventDefault();
+
+  const message = messageInput.value;
+
+  // Clear input and show loading text in both boxes
+  messageInput.value = '';
+  gptResponseBox.innerHTML = 'GPT-4 Response: Loading...';
+  gptResponseBox.classList.add('loading');
+  claudeResponseBox.innerHTML = 'Claude-3.5 Response: Loading...';
+  claudeResponseBox.classList.add('loading');
+
+  try {
+    // Helper function to format the response
+    const formatResponse = (response) => {
+      // Check if the response contains code blocks
+      if (response.includes('```')) {
+        // Split the response into parts - text and code
+        return response.split(/```/g).map((part, index) => {
+          // For odd-indexed parts, wrap them in <pre><code> (code blocks)
+          if (index % 2 === 1) {
+            return `<pre><code>${part}</code></pre>`;
+          }
+          // For even-indexed parts, keep them as regular text
+          return `<p>${part}</p>`;
+        }).join(''); // Join the parts back into a single string
+      }
+      // If no code blocks, return the response as simple text
+      return `<p>${response}</p>`;
+    };
+
+    // Fetch GPT-4 response
+    const gptResponse = await fetch('/chat-completion-gpt', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ message }),
+    });
+
+    const gptData = await gptResponse.json();
+    gptResponseBox.innerHTML = `GPT-4 Response: ${formatResponse(gptData.response)}`;
+    gptResponseBox.classList.remove('loading');
+
+    // Fetch Claude-3.5 response
+    const claudeResponse = await fetch('/chat-completion-claude', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ message }),
+    });
+
+    const claudeData = await claudeResponse.json();
+    claudeResponseBox.innerHTML = `Claude-3.5 Response: ${formatResponse(claudeData.response)}`;
+    claudeResponseBox.classList.remove('loading');
+
+  } catch (error) {
+    console.error('Error:', error);
+    gptResponseBox.innerHTML = 'GPT-4 Response: Error fetching response. Try again.';
+    claudeResponseBox.innerHTML = 'Claude-3.5 Response: Error fetching response. Try again.';
+  }
+});
+
+  </script>
+</body>
+</html>
